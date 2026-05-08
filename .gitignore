@@ -1,0 +1,57 @@
+# ===== API Keys & 隐私 =====
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+!.env.example
+*.key
+*.pem
+credentials.json
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# ===== Python 虚拟环境 =====
+venv/
+.venv/
+env/
+ENV/
+
+# ===== Node.js =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ===== 编辑器 =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== 操作系统 =====
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===== 日志 =====
+*.log
+logs/
+
+# ===== 项目运行时数据 =====
+projects/*/
+!projects/.gitkeep
