@@ -1,0 +1,11 @@
+[project]
+name = "ai-writer-council"
+version = "0.1.0"
+description = "AI 作家委员会 - 多 agent 协作长篇小说创作工具"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "yekongclx-a11y", email = "yekongclx@gmail.com" },
+]
+dependencies = []
