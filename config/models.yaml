@@ -1,0 +1,18 @@
+models:
+  claude:
+    provider: anthropic
+    model_name: claude-sonnet-4-6
+    base_url_env: ANTHROPIC_BASE_URL
+    api_key_env: ANTHROPIC_API_KEY
+
+  deepseek:
+    provider: openai_compatible
+    model_name: deepseek-chat
+    base_url_env: DEEPSEEK_BASE_URL
+    api_key_env: DEEPSEEK_API_KEY
+
+  gemini:
+    provider: openai_compatible
+    model_name: gemini-2.0-flash-exp
+    base_url_env: GEMINI_BASE_URL
+    api_key_env: GEMINI_API_KEY

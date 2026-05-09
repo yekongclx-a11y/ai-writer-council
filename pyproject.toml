@@ -8,4 +8,10 @@ license = { text = "MIT" }
 authors = [
     { name = "yekongclx-a11y", email = "yekongclx@gmail.com" },
 ]
-dependencies = []
+dependencies = [
+    "anthropic>=0.100.0",
+    "fastapi>=0.136.1",
+    "httpx>=0.28.1",
+    "python-dotenv>=1.2.2",
+    "uvicorn[standard]>=0.46.0",
+]
