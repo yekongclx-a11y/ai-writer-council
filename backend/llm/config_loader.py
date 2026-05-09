@@ -1,5 +1,5 @@
 """
-配置加载器：读取 config/committee.yaml 和 config/models.yaml，提供懒加载缓存。
+配置加载器：读取 config/committee.yaml、config/models.yaml 和 presets/default.yaml，提供懒加载缓存。
 """
 
 from pathlib import Path
@@ -9,14 +9,16 @@ import yaml
 _ROOT = Path(__file__).parent.parent.parent
 _COMMITTEE_PATH = _ROOT / "config" / "committee.yaml"
 _MODELS_PATH = _ROOT / "config" / "models.yaml"
+_PRESETS_DIR = _ROOT / "presets"
 
 # 进程内缓存，首次调用时加载，之后不再读盘
 _committee: dict | None = None
 _models: dict | None = None
+_active_preset: dict | None = None  # 当前加载的预设（role → system_prompt）
 
 
 def _load_configs() -> None:
-    global _committee, _models
+    global _committee, _models, _active_preset
 
     for path in (_COMMITTEE_PATH, _MODELS_PATH):
         if not path.exists():
@@ -31,9 +33,28 @@ def _load_configs() -> None:
     with _MODELS_PATH.open(encoding="utf-8") as f:
         _models = yaml.safe_load(f)["models"]
 
+    # 加载默认预设
+    preset_path = _PRESETS_DIR / "default.yaml"
+    if not preset_path.exists():
+        raise FileNotFoundError(
+            f"预设文件缺失：{preset_path}\n"
+            f"请确认 presets/ 目录已正确创建并包含 default.yaml。"
+        )
+
+    with preset_path.open(encoding="utf-8") as f:
+        _active_preset = yaml.safe_load(f)["system_prompts"]
+
+    # 严格校验：committee.yaml 里的每个委员都必须在预设里有对应的 system_prompt
+    missing = [role for role in _committee if role not in _active_preset]
+    if missing:
+        raise ValueError(
+            f"预设文件 {preset_path} 缺少以下委员的 system_prompt：{missing}\n"
+            f"请在 presets/default.yaml 的 system_prompts 下补充对应条目。"
+        )
+
 
 def get_committee_config(role: str) -> dict:
-    """返回指定委员的配置字典。role 为 committee.yaml 中的英文 key（如 'writer'）。"""
+    """返回指定委员的配置字典（含 system_prompt）。role 为 committee.yaml 中的英文 key（如 'writer'）。"""
     if _committee is None:
         _load_configs()
 
@@ -44,7 +65,10 @@ def get_committee_config(role: str) -> dict:
             f"可用角色：{available}"
         )
 
-    return _committee[role]
+    # 浅拷贝后注入 system_prompt，不污染模块级缓存
+    config = dict(_committee[role])
+    config["system_prompt"] = _active_preset[role]
+    return config
 
 
 def get_model_config(model_key: str) -> dict:

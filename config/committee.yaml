@@ -4,32 +4,27 @@ committees:
     model: claude
     temperature: 0.7
     max_tokens: 2000
-    system_prompt: "TODO: 待设计"
 
   writer:
     name: 作家
     model: claude
     temperature: 0.9
     max_tokens: 4000
-    system_prompt: "TODO: 待设计"
 
   critic:
     name: 批评家
     model: claude
     temperature: 0.5
     max_tokens: 1500
-    system_prompt: "TODO: 待设计"
 
   consistency_officer:
     name: 一致性委员
     model: deepseek
     temperature: 0.3
     max_tokens: 1500
-    system_prompt: "TODO: 待设计"
 
   polisher:
     name: 润色师
     model: deepseek
     temperature: 0.6
     max_tokens: 4000
-    system_prompt: "TODO: 待设计"
