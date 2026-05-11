@@ -3,7 +3,9 @@
 """
 
 import os
+
 import anthropic
+import httpx
 
 from .config_loader import get_committee_config, get_model_config
 
@@ -21,26 +23,27 @@ def call_llm(role: str, messages: list[dict], **overrides) -> str:
         LLM 输出的纯文本字符串
     """
     committee = get_committee_config(role)
-    model_key = committee["model"]
-    model = get_model_config(model_key)
+    provider_key = committee["provider"]
+    model = get_model_config(provider_key)
 
-    # overrides 允许调用方临时覆盖委员默认参数
-    temperature = overrides.get("temperature", committee["temperature"])
-    max_tokens = overrides.get("max_tokens", committee["max_tokens"])
+    temperature  = overrides.get("temperature",   committee["temperature"])
+    max_tokens   = overrides.get("max_tokens",    committee["max_tokens"])
     system_prompt = overrides.get("system_prompt", committee["system_prompt"])
 
-    # [hook 位] before_call(role, messages) —— 未来中间件/插件链在此介入
-
-    if model["provider"] == "anthropic":
-        result = _call_anthropic(model, system_prompt, messages, temperature, max_tokens)
-    elif model["provider"] == "openai_compatible":
-        result = _call_openai_compatible(model, system_prompt, messages, temperature, max_tokens)
+    if model["api_type"] == "anthropic":
+        return _call_anthropic(model, system_prompt, messages, temperature, max_tokens)
+    elif model["api_type"] == "openai_compatible":
+        return _call_openai_compatible(model, system_prompt, messages, temperature, max_tokens)
     else:
-        raise ValueError(f"未知 provider：'{model['provider']}'")
+        raise ValueError(f"未知 api_type：'{model['api_type']}'")
 
-    # [hook 位] after_call(role, result) —— 未来中间件/插件链在此介入
 
-    return result
+def _resolve_base_url(model_config: dict) -> str:
+    """从环境变量读取 base_url；未配置则返回 models.yaml 中的官方默认地址。"""
+    return (
+        os.environ.get(model_config["base_url_env"], "").strip()
+        or model_config["default_base_url"]
+    )
 
 
 def _call_anthropic(
@@ -53,12 +56,10 @@ def _call_anthropic(
     api_key = os.environ.get(model_config["api_key_env"])
     if not api_key:
         raise EnvironmentError(
-            f"API key 未配置。请在 .env 文件中设置 {model_config['api_key_env']}。"
+            f"API key 未配置。请在设置页配置 {model_config['api_key_env']}。"
         )
 
-    # base_url 留空则 SDK 使用官方默认 endpoint
-    base_url = os.environ.get(model_config["base_url_env"]) or None
-
+    base_url = _resolve_base_url(model_config)
     client = anthropic.Anthropic(api_key=api_key, base_url=base_url)
 
     response = client.messages.create(
@@ -68,7 +69,6 @@ def _call_anthropic(
         temperature=temperature,
         max_tokens=max_tokens,
     )
-
     return response.content[0].text
 
 
@@ -79,7 +79,34 @@ def _call_openai_compatible(
     temperature: float,
     max_tokens: int,
 ) -> str:
-    raise NotImplementedError(
-        f"openai_compatible provider 尚未实现（model: {model_config['model_name']}）。"
-        "DeepSeek / Gemini 调用将在后续阶段通过 httpx 接入。"
+    api_key = os.environ.get(model_config["api_key_env"])
+    if not api_key:
+        raise EnvironmentError(
+            f"API key 未配置。请在设置页配置 {model_config['api_key_env']}。"
+        )
+
+    base_url = _resolve_base_url(model_config).rstrip("/")
+    full_messages = [{"role": "system", "content": system_prompt}] + messages
+
+    response = httpx.post(
+        f"{base_url}/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model_config["model_name"],
+            "messages": full_messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        },
+        timeout=120.0,
     )
+
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"API 请求失败（{model_config['model_name']}）："
+            f"HTTP {response.status_code} — {response.text[:300]}"
+        )
+
+    return response.json()["choices"][0]["message"]["content"]

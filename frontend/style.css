@@ -1,1 +1,542 @@
-/* 全局样式，待实现 */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #161616;
+  color: #ddd;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+header {
+  padding: 10px 18px;
+  background: #111;
+  border-bottom: 1px solid #2a2a2a;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.header-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #bbb;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+#settings-btn {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+#settings-btn:hover { color: #aaa; background: #1e1e1e; }
+
+/* ── Three-column grid ── */
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr 1fr;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Left column ── */
+.col-left {
+  border-right: 1px solid #2a2a2a;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #1a1a1a;
+}
+
+/* ── Middle + Right columns ── */
+.col-mid,
+.col-right {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.col-mid { border-right: 1px solid #2a2a2a; }
+
+.col-header {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid #2a2a2a;
+  flex-shrink: 0;
+}
+.decisions-header { border-top: 1px solid #2a2a2a; }
+
+/* ── Panel (left col cards) ── */
+.panel {
+  background: #202020;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 10px;
+}
+.panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+/* ── Form fields ── */
+.field { margin-bottom: 7px; }
+.field:last-child { margin-bottom: 0; }
+
+.field label {
+  display: block;
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 3px;
+}
+
+.field input[type="text"],
+.field textarea {
+  width: 100%;
+  background: #161616;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #ccc;
+  padding: 5px 7px;
+  font-size: 11px;
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.5;
+}
+.field input[type="text"]:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: #4a6fa5;
+}
+
+.inline-fields { display: flex; gap: 4px; }
+.inline-fields input { flex: 1; }
+
+/* ── Character rows ── */
+.character-row {
+  background: #161616;
+  border: 1px solid #2e2e2e;
+  border-radius: 4px;
+  padding: 7px;
+  margin-bottom: 5px;
+  position: relative;
+}
+.character-row input {
+  width: 100%;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: #ccc;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-family: inherit;
+  margin-bottom: 3px;
+}
+.character-row input:last-child { margin-bottom: 0; }
+.character-row input::placeholder { color: #4a4a4a; }
+
+.remove-char {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+}
+.remove-char:hover { color: #c06060; }
+
+.btn-add {
+  width: 100%;
+  background: none;
+  border: 1px dashed #383838;
+  color: #666;
+  border-radius: 4px;
+  padding: 4px 0;
+  font-size: 11px;
+  cursor: pointer;
+  margin-top: 2px;
+}
+.btn-add:hover { border-color: #555; color: #aaa; }
+
+/* ── Actions panel ── */
+.actions-panel { display: flex; flex-direction: column; gap: 8px; }
+
+.length-control label {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 4px;
+}
+.length-control strong { color: #ddd; }
+.length-control input[type="range"] {
+  width: 100%;
+  accent-color: #4a6fa5;
+}
+
+#run-btn {
+  width: 100%;
+  padding: 9px;
+  background: #2d5080;
+  border: none;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+#run-btn:hover:not(:disabled) { background: #3a64a0; }
+#run-btn:disabled { background: #252525; color: #555; cursor: not-allowed; }
+
+/* ── Debate log ── */
+.debate-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.debate-card {
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  background: #1e1e1e;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.debate-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.debate-card-header:hover { background: #252525; }
+
+.role-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+.role-editor_in_chief     { background: #2a1e52; color: #a090e0; }
+.role-writer              { background: #1a3a22; color: #70b880; }
+.role-critic              { background: #3a1e18; color: #d08868; }
+.role-consistency_officer { background: #182a3a; color: #68a8d0; }
+.role-polisher            { background: #2a2a18; color: #c0b860; }
+
+.mode-label  { font-size: 10px; color: #666; }
+.char-count  { margin-left: auto; font-size: 10px; color: #555; }
+.expand-icon { font-size: 9px; color: #555; transition: transform 0.15s; }
+.debate-card.expanded .expand-icon { transform: rotate(90deg); }
+
+.debate-card-body {
+  display: none;
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  color: #bbb;
+  border-top: 1px solid #2a2a2a;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.debate-card.expanded .debate-card-body { display: block; }
+
+/* ── Scene text ── */
+.scene-text {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  font-size: 15px;
+  line-height: 2;
+  white-space: pre-wrap;
+  color: #e0e0e0;
+  min-height: 0;
+}
+
+/* ── Decisions ── */
+.decisions {
+  overflow-y: auto;
+  max-height: 220px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.decision-card {
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 7px 10px;
+  background: #1e1e1e;
+  flex-shrink: 0;
+}
+.decision-type {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #666;
+  margin-bottom: 3px;
+}
+.decision-desc {
+  font-size: 12px;
+  color: #bbb;
+  line-height: 1.6;
+}
+.decision-rev {
+  font-size: 10px;
+  color: #555;
+  margin-top: 3px;
+}
+
+/* ── Placeholder ── */
+.placeholder {
+  color: #444;
+  font-size: 12px;
+  text-align: center;
+  padding: 30px 0;
+}
+
+/* ── Loading ── */
+.loading-msg {
+  color: #4a6fa5;
+  font-size: 12px;
+  text-align: center;
+  padding: 30px 0;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }
+
+/* ── Settings modal ── */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.settings-overlay.hidden { display: none; }
+
+.settings-modal {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  width: 440px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #2a2a2a;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ccc;
+}
+.settings-header button {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+.settings-header button:hover { color: #aaa; }
+
+.settings-body {
+  padding: 14px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+.settings-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 12px 0 6px;
+}
+.settings-section-title:first-child { margin-top: 0; }
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid #2a2a2a;
+}
+.settings-msg {
+  font-size: 11px;
+  color: #70b880;
+  flex: 1;
+}
+.settings-msg.error { color: #c06060; }
+#settings-save {
+  padding: 6px 18px;
+  background: #2d5080;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#settings-save:hover { background: #3a64a0; }
+#settings-save:disabled { background: #252525; color: #555; cursor: not-allowed; }
+
+/* 设置页复用 .field 样式，但 input 样式需覆盖 */
+.settings-body .field input[type="text"],
+.settings-body .field input[type="password"] {
+  width: 100%;
+  background: #161616;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #ccc;
+  padding: 5px 7px;
+  font-size: 11px;
+  font-family: inherit;
+}
+.settings-body .field input:focus {
+  outline: none;
+  border-color: #4a6fa5;
+}
+
+/* ── Provider blocks ── */
+.provider-block {
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: #191919;
+}
+.provider-block:last-child { margin-bottom: 0; }
+
+.provider-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.provider-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #bbb;
+  letter-spacing: 0.04em;
+}
+.provider-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #2a2a2a;
+  color: #555;
+}
+.provider-badge.configured {
+  background: #1a3a22;
+  color: #70b880;
+}
+.provider-badge.unconfigured {
+  background: #3a2010;
+  color: #c08050;
+}
+
+.key-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px;
+  background: #161616;
+  border: 1px solid #333;
+  border-radius: 4px;
+  min-height: 29px;
+}
+.key-configured-label {
+  font-size: 11px;
+  color: #70b880;
+  flex: 1;
+}
+.key-edit-btn {
+  background: none;
+  border: 1px solid #383838;
+  border-radius: 3px;
+  color: #888;
+  font-size: 10px;
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.key-edit-btn:hover { border-color: #555; color: #ccc; }
+
+.key-input.hidden { display: none; }
+
+.field-hint {
+  font-size: 10px;
+  color: #555;
+  font-weight: 400;
+}
+
+.hidden { display: none !important; }
+
+/* 无 API key 时的顶部提示横幅 */
+.no-key-banner {
+  background: #3a2010;
+  border-bottom: 1px solid #6a4020;
+  color: #e0a060;
+  font-size: 12px;
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.no-key-banner button {
+  background: #6a4020;
+  border: none;
+  border-radius: 3px;
+  color: #e0a060;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.no-key-banner button:hover { background: #8a5030; }

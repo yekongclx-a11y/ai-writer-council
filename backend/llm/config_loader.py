@@ -68,6 +68,9 @@ def get_committee_config(role: str) -> dict:
     # 浅拷贝后注入 system_prompt，不污染模块级缓存
     config = dict(_committee[role])
     config["system_prompt"] = _active_preset[role]
+    # 兼容旧字段名 model → provider
+    if "model" in config and "provider" not in config:
+        config["provider"] = config.pop("model")
     return config
 
 

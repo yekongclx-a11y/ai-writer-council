@@ -1,13 +1,218 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 作家委员会</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 作家委员会</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    AI 作家委员会 - 前端待实现
-    <script src="app.js"></script>
+
+<header>
+  <span class="header-title">AI 作家委员会</span>
+  <button id="settings-btn" title="API Key 设置">⚙</button>
+</header>
+
+<!-- 设置弹窗 -->
+<div id="settings-overlay" class="settings-overlay hidden">
+  <div class="settings-modal">
+    <div class="settings-header">
+      <span>模型提供商配置</span>
+      <button id="settings-close">×</button>
+    </div>
+    <div class="settings-body">
+
+      <!-- Claude -->
+      <div class="provider-block" id="provider-claude">
+        <div class="provider-title">
+          <span class="provider-name">Claude (Anthropic)</span>
+          <span class="provider-badge" id="badge-claude"></span>
+        </div>
+        <div class="field">
+          <label>API Key</label>
+          <div class="key-row" id="key-row-claude">
+            <span class="key-configured-label">已配置 ✓</span>
+            <button class="key-edit-btn" data-provider="claude">修改</button>
+          </div>
+          <input type="password" class="key-input hidden" id="key-input-claude"
+                 data-provider="claude" autocomplete="off" placeholder="sk-ant-…">
+        </div>
+        <div class="field">
+          <label>Base URL <span class="field-hint">（留空使用官方地址）</span></label>
+          <input type="text" id="url-input-claude"
+                 placeholder="https://api.anthropic.com">
+        </div>
+        <div class="field">
+          <label class="field-hint">官方地址：https://api.anthropic.com</label>
+        </div>
+      </div>
+
+      <!-- DeepSeek -->
+      <div class="provider-block" id="provider-deepseek">
+        <div class="provider-title">
+          <span class="provider-name">DeepSeek</span>
+          <span class="provider-badge" id="badge-deepseek"></span>
+        </div>
+        <div class="field">
+          <label>API Key</label>
+          <div class="key-row" id="key-row-deepseek">
+            <span class="key-configured-label">已配置 ✓</span>
+            <button class="key-edit-btn" data-provider="deepseek">修改</button>
+          </div>
+          <input type="password" class="key-input hidden" id="key-input-deepseek"
+                 data-provider="deepseek" autocomplete="off" placeholder="sk-…">
+        </div>
+        <div class="field">
+          <label>Base URL <span class="field-hint">（留空使用官方地址）</span></label>
+          <input type="text" id="url-input-deepseek"
+                 placeholder="https://api.deepseek.com">
+        </div>
+        <div class="field">
+          <label class="field-hint">官方地址：https://api.deepseek.com</label>
+        </div>
+      </div>
+
+      <!-- Gemini -->
+      <div class="provider-block" id="provider-gemini">
+        <div class="provider-title">
+          <span class="provider-name">Gemini（备用，暂无委员岗位）</span>
+          <span class="provider-badge" id="badge-gemini"></span>
+        </div>
+        <div class="field">
+          <label>API Key</label>
+          <div class="key-row" id="key-row-gemini">
+            <span class="key-configured-label">已配置 ✓</span>
+            <button class="key-edit-btn" data-provider="gemini">修改</button>
+          </div>
+          <input type="password" class="key-input hidden" id="key-input-gemini"
+                 data-provider="gemini" autocomplete="off" placeholder="AIza…">
+        </div>
+        <div class="field">
+          <label>Base URL <span class="field-hint">（留空使用官方地址）</span></label>
+          <input type="text" id="url-input-gemini"
+                 placeholder="https://generativelanguage.googleapis.com/v1beta/openai">
+        </div>
+        <div class="field">
+          <label class="field-hint">官方地址：https://generativelanguage.googleapis.com/v1beta/openai</label>
+        </div>
+      </div>
+
+    </div>
+    <div class="settings-footer">
+      <span id="settings-msg" class="settings-msg"></span>
+      <button id="settings-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<main class="layout">
+
+  <!-- 左栏：表单 -->
+  <aside class="col-left">
+
+    <div class="panel">
+      <div class="panel-title">作品设定</div>
+
+      <div class="field">
+        <label>标题</label>
+        <input type="text" id="title" value="暗流">
+      </div>
+      <div class="field">
+        <label>题材</label>
+        <input type="text" id="genre" value="现代悬疑">
+      </div>
+      <div class="field">
+        <label>世界观</label>
+        <textarea id="world-view" rows="2">当代中国某沿海城市，权贵与底层之间暗流涌动。</textarea>
+      </div>
+      <div class="field">
+        <label>风格</label>
+        <div class="inline-fields">
+          <input type="text" id="style-tone" placeholder="语气" value="冷峻克制">
+          <input type="text" id="style-pace" placeholder="节奏" value="中速，节奏感强">
+          <input type="text" id="style-pov" placeholder="视角" value="第三人称限知视角">
+        </div>
+      </div>
+      <div class="field">
+        <label>禁忌主题（逗号分隔）</label>
+        <input type="text" id="forbidden-themes" value="过度暴力, 色情">
+      </div>
+      <div class="field">
+        <label>角色</label>
+        <div id="characters-list"></div>
+        <button type="button" class="btn-add" id="add-character">+ 添加角色</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">本轮指令</div>
+
+      <div class="field">
+        <label>场景概述</label>
+        <textarea id="scene-brief" rows="2">陈默在废弃仓库中发现一个线索，林晓薇意外出现，两人第一次正面交锋。</textarea>
+      </div>
+      <div class="field">
+        <label>场景背景</label>
+        <textarea id="scene-setting" rows="2">深夜，港口废弃仓库，潮湿阴冷，远处有船鸣声。</textarea>
+      </div>
+      <div class="field">
+        <label>目标</label>
+        <textarea id="goal" rows="2">建立两人之间的张力，埋下合作的可能性，但不要急于和解。</textarea>
+      </div>
+      <div class="field">
+        <label>涉及角色（逗号分隔）</label>
+        <input type="text" id="involved-characters" value="陈默, 林晓薇">
+      </div>
+      <div class="field">
+        <label>必须包含（逗号分隔）</label>
+        <input type="text" id="must-include" value="一句能概括陈默性格的台词, 仓库内的具体细节">
+      </div>
+      <div class="field">
+        <label>必须避免（逗号分隔）</label>
+        <input type="text" id="must-avoid" value="俗套的打斗, 一见如故式的快速信任">
+      </div>
+      <div class="field">
+        <label>本轮节奏</label>
+        <input type="text" id="pace" value="紧绷，克制">
+      </div>
+      <div class="field">
+        <label>情感弧线</label>
+        <input type="text" id="emotional-arc" value="对立 → 试探 → 暂时僵持">
+      </div>
+    </div>
+
+    <div class="panel actions-panel">
+      <div class="length-control">
+        <label>目标字数：<strong id="length-display">500</strong></label>
+        <input type="range" id="target-length" min="500" max="5000" step="500" value="500">
+      </div>
+      <button id="run-btn">开始创作</button>
+    </div>
+
+  </aside>
+
+  <!-- 中栏：辩论过程 -->
+  <section class="col-mid">
+    <div class="col-header">委员会辩论</div>
+    <div id="debate-log" class="debate-log">
+      <p class="placeholder">点击「开始创作」后，委员会辩论过程将显示在这里。</p>
+    </div>
+  </section>
+
+  <!-- 右栏：成品 + 重大决策 -->
+  <section class="col-right">
+    <div class="col-header">最终成品</div>
+    <div id="scene-text" class="scene-text">
+      <p class="placeholder">成品将在这里显示。</p>
+    </div>
+    <div class="col-header decisions-header">重大决策</div>
+    <div id="decisions" class="decisions">
+      <p class="placeholder" style="padding: 8px 0;">—</p>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
 </body>
 </html>

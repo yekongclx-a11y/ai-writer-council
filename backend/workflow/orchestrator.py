@@ -1,6 +1,10 @@
 from __future__ import annotations
 import json
+import re
 from datetime import datetime, timezone
+from typing import Generator
+
+import json_repair
 
 from backend.llm import call_llm
 from .schemas import Setting, RoundBrief, RoundResult
@@ -8,17 +12,22 @@ from .schemas import Setting, RoundBrief, RoundResult
 
 # ── 辅助函数 ──────────────────────────────────────────────────────────────────
 
-def _log(round_log: list[dict], role: str, mode: str, output: str) -> None:
-    round_log.append({
-        "role": role,
-        "mode": mode,
-        "output": output,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
-
-
 def _parse_json(text: str) -> dict:
-    return json.loads(text)
+    cleaned = re.sub(r'^\s*```(?:json)?\s*\n?', '', text.strip())
+    cleaned = re.sub(r'\n?```\s*$', '', cleaned).strip()
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+    # json_repair 兜底：处理 LLM 输出中未转义引号等轻微格式错误
+    try:
+        result = json_repair.loads(cleaned)
+        if isinstance(result, (dict, list)):
+            return result
+    except Exception:
+        pass
+    preview = repr(cleaned[:200])
+    raise ValueError(f"LLM 输出无法解析为 JSON（json_repair 也无法修复）\n原文片段：{preview}")
 
 
 # ── 消息构建 ──────────────────────────────────────────────────────────────────
@@ -40,9 +49,15 @@ def _fmt_setting(setting: Setting) -> str:
     )
 
 
+def _inflate_target(target: int) -> int:
+    """将用户设定字数上浮 20%，补偿标点/换行占位导致的纯汉字脱水率。"""
+    return round(target * 1.2 / 100) * 100
+
+
 def _fmt_brief(brief: RoundBrief) -> str:
     must_inc = "、".join(brief.must_include) or "（无）"
     must_av = "、".join(brief.must_avoid) or "（无）"
+    inflated = _inflate_target(brief.target_length)
     return (
         f"【本轮指令（Round Brief）】\n"
         f"场景概述：{brief.scene_brief}\n"
@@ -51,7 +66,7 @@ def _fmt_brief(brief: RoundBrief) -> str:
         f"目标：{brief.goal}\n"
         f"必须包含：{must_inc}\n"
         f"必须避免：{must_av}\n"
-        f"目标字数：{brief.target_length}\n"
+        f"目标字数：{inflated}（含标点，纯汉字须达到约 {brief.target_length} 字）\n"
         f"本轮节奏：{brief.pace_for_this_round or '（跟随设定）'}\n"
         f"情感弧线：{brief.emotional_arc or '（未指定）'}\n"
         f"前情摘要：{brief.prev_summary or '（无）'}\n"
@@ -59,16 +74,32 @@ def _fmt_brief(brief: RoundBrief) -> str:
     )
 
 
-# ── 核心编排 ──────────────────────────────────────────────────────────────────
+def _make_step(role: str, mode: str, output: str) -> dict:
+    return {
+        "type": "step",
+        "role": role,
+        "mode": mode,
+        "output": output,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
-def run_decision(setting: Setting, brief: RoundBrief) -> RoundResult:
+
+# ── 流式编排（核心）──────────────────────────────────────────────────────────
+
+def stream_decision(setting: Setting, brief: RoundBrief) -> Generator[dict, None, None]:
     """
-    跑一次完整决议。串行调用 5 委员，遵循既定流程。
+    跑一次完整决议，每完成一个委员步骤就 yield 一条 type=step 事件。
+    最后 yield 一条 type=done 事件，包含 scene_text / major_decisions / round_log。
     MVP 阶段修订上限 1 轮。
     """
     round_log: list[dict] = []
     setting_str = _fmt_setting(setting)
     brief_str = _fmt_brief(brief)
+
+    def emit(role: str, mode: str, output: str) -> dict:
+        event = _make_step(role, mode, output)
+        round_log.append({k: v for k, v in event.items() if k != "type"})
+        return event
 
     # ── 步骤 1：主编制定场景大纲 ──────────────────────────────────────────────
     outline_raw = call_llm(
@@ -80,7 +111,7 @@ def run_decision(setting: Setting, brief: RoundBrief) -> RoundResult:
         )}],
         mode="outline",
     )
-    _log(round_log, "editor_in_chief", "outline", outline_raw)
+    yield emit("editor_in_chief", "outline", outline_raw)
     outline = _parse_json(outline_raw)
 
     outline_str = (
@@ -106,7 +137,7 @@ def run_decision(setting: Setting, brief: RoundBrief) -> RoundResult:
         )}],
         mode="draft",
     )
-    _log(round_log, "writer", "draft", draft)
+    yield emit("writer", "draft", draft)
 
     # ── 步骤 3：批评家审稿 ────────────────────────────────────────────────────
     critic_raw = call_llm(
@@ -118,7 +149,7 @@ def run_decision(setting: Setting, brief: RoundBrief) -> RoundResult:
             "请审阅初稿，严格按 JSON 格式输出。"
         )}],
     )
-    _log(round_log, "critic", "review", critic_raw)
+    yield emit("critic", "review", critic_raw)
     critic_result = _parse_json(critic_raw)
 
     # ── 步骤 4：一致性委员校对 ────────────────────────────────────────────────
@@ -131,7 +162,7 @@ def run_decision(setting: Setting, brief: RoundBrief) -> RoundResult:
             "请校对一致性，严格按 JSON 格式输出。"
         )}],
     )
-    _log(round_log, "consistency_officer", "check", consistency_raw)
+    yield emit("consistency_officer", "check", consistency_raw)
     consistency_result = _parse_json(consistency_raw)
 
     # ── 步骤 5：主编 review → 决定是否修订 ───────────────────────────────────
@@ -149,7 +180,7 @@ def run_decision(setting: Setting, brief: RoundBrief) -> RoundResult:
         )}],
         mode="review",
     )
-    _log(round_log, "editor_in_chief", "review", review_raw)
+    yield emit("editor_in_chief", "review", review_raw)
     review = _parse_json(review_raw)
 
     # ── 步骤 5b（条件）：作家修订（MVP 1 轮封顶）────────────────────────────
@@ -169,16 +200,13 @@ def run_decision(setting: Setting, brief: RoundBrief) -> RoundResult:
             )}],
             mode="revise",
         )
-        _log(round_log, "writer", "revise", final_draft)
+        yield emit("writer", "revise", final_draft)
     else:
-        # approve_draft：初稿直接通过
         final_draft = draft
 
     # ── 步骤 6：润色师打磨 ────────────────────────────────────────────────────
     highlights_str = json.dumps(critic_result.get("highlights", []), ensure_ascii=False, indent=2)
-    style_str = (
-        f"语气={setting.style.tone} 节奏={setting.style.pace} 视角={setting.style.pov}"
-    )
+    style_str = f"语气={setting.style.tone} 节奏={setting.style.pace} 视角={setting.style.pov}"
 
     polish_raw = call_llm(
         role="polisher",
@@ -189,10 +217,8 @@ def run_decision(setting: Setting, brief: RoundBrief) -> RoundResult:
             "请润色，严格按 JSON 格式输出。"
         )}],
     )
-    _log(round_log, "polisher", "polish", polish_raw)
-    polish_result = _parse_json(polish_raw)
-
-    scene_text = polish_result.get("polished_text", final_draft)
+    yield emit("polisher", "polish", polish_raw)
+    scene_text = polish_raw.strip()
 
     # ── 步骤 7：主编 finalize → 重大决策标记 ─────────────────────────────────
     finalize_raw = call_llm(
@@ -206,9 +232,32 @@ def run_decision(setting: Setting, brief: RoundBrief) -> RoundResult:
         )}],
         mode="finalize",
     )
-    _log(round_log, "editor_in_chief", "finalize", finalize_raw)
+    yield emit("editor_in_chief", "finalize", finalize_raw)
     finalize_result = _parse_json(finalize_raw)
     major_decisions = finalize_result.get("major_decisions", [])
+
+    yield {
+        "type": "done",
+        "scene_text": scene_text,
+        "major_decisions": major_decisions,
+        "round_log": round_log,
+        "metadata": {},
+    }
+
+
+# ── HTTP 端点用的薄包装 ───────────────────────────────────────────────────────
+
+def run_decision(setting: Setting, brief: RoundBrief) -> RoundResult:
+    """收集 stream_decision 的全部事件，返回 RoundResult。HTTP /api/run 使用。"""
+    scene_text = ""
+    major_decisions: list = []
+    round_log: list = []
+
+    for event in stream_decision(setting, brief):
+        if event["type"] == "done":
+            scene_text = event["scene_text"]
+            major_decisions = event["major_decisions"]
+            round_log = event["round_log"]
 
     return RoundResult(
         scene_text=scene_text,

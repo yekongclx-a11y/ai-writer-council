@@ -55,3 +55,7 @@ logs/
 # ===== 项目运行时数据 =====
 projects/*/
 !projects/.gitkeep
+
+# ===== 本地测试文件 =====
+output.md
+test_*.py
