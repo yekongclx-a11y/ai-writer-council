@@ -316,6 +316,31 @@ header {
   margin-top: 3px;
 }
 
+/* ── Chapter summary ── */
+.chapter-summary {
+  border: 1px solid #2a3a2a;
+  border-radius: 4px;
+  padding: 8px 10px;
+  background: #1a2a1a;
+  flex-shrink: 0;
+  margin-bottom: 6px;
+}
+.chapter-summary strong {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #70a870;
+  margin-bottom: 3px;
+}
+.chapter-summary p {
+  font-size: 12px;
+  color: #b0d0b0;
+  line-height: 1.6;
+  margin: 0;
+}
+
 /* ── Placeholder ── */
 .placeholder {
   color: #444;

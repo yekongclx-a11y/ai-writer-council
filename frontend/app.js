@@ -7,13 +7,14 @@ const ROLE_NAMES = {
 };
 
 const MODE_NAMES = {
-  outline:  '大纲',
-  draft:    '初稿',
-  review:   '审稿',
-  check:    '校对',
-  revise:   '修订',
-  polish:   '润色',
-  finalize: '终审',
+  outline:         '大纲',
+  draft:           '初稿',
+  review:          '审稿',
+  check:           '校对',
+  revise:          '修订',
+  polish:          '润色',
+  finalize:        '终审',
+  chapter_summary: '章节摘要',
 };
 
 const DECISION_TYPE_NAMES = {
@@ -208,6 +209,12 @@ function runDecision() {
     } else if (msg.type === 'done') {
       sceneText.textContent = msg.scene_text;
       renderDecisions(msg.major_decisions);
+      if (msg.chapter_summary) {
+        const summaryEl = document.createElement('div');
+        summaryEl.className = 'chapter-summary';
+        summaryEl.innerHTML = '<strong>本回摘要</strong><p>' + escHtml(msg.chapter_summary) + '</p>';
+        decisions.insertAdjacentElement('afterbegin', summaryEl);
+      }
 
     } else if (msg.type === 'error') {
       debateLog.innerHTML += `<p style="color:#c06060;padding:20px 0">${escHtml(msg.message)}</p>`;
