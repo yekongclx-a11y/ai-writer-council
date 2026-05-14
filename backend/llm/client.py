@@ -3,14 +3,17 @@
 """
 
 import os
+from collections import namedtuple
 
 import anthropic
 import httpx
 
 from .config_loader import get_committee_config, get_model_config
 
+LLMResult = namedtuple("LLMResult", ["text", "input_tokens", "output_tokens"])
 
-def call_llm(role: str, messages: list[dict], **overrides) -> str:
+
+def call_llm(role: str, messages: list[dict], **overrides) -> LLMResult:
     """
     统一 LLM 调用入口。
 
@@ -20,7 +23,7 @@ def call_llm(role: str, messages: list[dict], **overrides) -> str:
         **overrides: 临时覆盖参数，支持 temperature / max_tokens / system_prompt
 
     Returns:
-        LLM 输出的纯文本字符串
+        LLMResult(text, input_tokens, output_tokens)
     """
     committee = get_committee_config(role)
     provider_key = committee["provider"]
@@ -52,7 +55,7 @@ def _call_anthropic(
     messages: list[dict],
     temperature: float,
     max_tokens: int,
-) -> str:
+) -> LLMResult:
     api_key = os.environ.get(model_config["api_key_env"])
     if not api_key:
         raise EnvironmentError(
@@ -69,7 +72,10 @@ def _call_anthropic(
         temperature=temperature,
         max_tokens=max_tokens,
     )
-    return response.content[0].text
+    text = "".join(b.text for b in response.content if b.type == "text")
+    inp = getattr(response.usage, "input_tokens", 0)
+    out = getattr(response.usage, "output_tokens", 0)
+    return LLMResult(text, inp, out)
 
 
 def _call_openai_compatible(
@@ -78,7 +84,7 @@ def _call_openai_compatible(
     messages: list[dict],
     temperature: float,
     max_tokens: int,
-) -> str:
+) -> LLMResult:
     api_key = os.environ.get(model_config["api_key_env"])
     if not api_key:
         raise EnvironmentError(
@@ -109,4 +115,9 @@ def _call_openai_compatible(
             f"HTTP {response.status_code} — {response.text[:300]}"
         )
 
-    return response.json()["choices"][0]["message"]["content"]
+    body = response.json()
+    text = body["choices"][0]["message"]["content"]
+    usage = body.get("usage", {})
+    inp = usage.get("prompt_tokens", 0) or usage.get("input_tokens", 0)
+    out = usage.get("completion_tokens", 0) or usage.get("output_tokens", 0)
+    return LLMResult(text, inp, out)

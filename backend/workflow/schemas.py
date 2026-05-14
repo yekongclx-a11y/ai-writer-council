@@ -46,6 +46,7 @@ class RoundBrief(BaseModel):
     last_paragraph: str = ""
     session_id: str = ""
     round_number: int = 1
+    special_instruction: str = ""
 
 
 class RoundResult(BaseModel):

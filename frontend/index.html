@@ -4,16 +4,392 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI 作家委员会</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
-<header>
-  <span class="header-title">AI 作家委员会</span>
-  <button id="settings-btn" title="API Key 设置">⚙</button>
-</header>
+<!-- ═══════ TopBar (40px) ═══════ -->
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-logo">🖋️ AI 作家委员会</span>
+    <span class="topbar-project" id="topbar-project"></span>
+      <span class="round-badge hidden" id="round-badge"></span>
+  </div>
+  <div class="topbar-center">
+    <div class="mode-toggle-group">
+      <button class="mode-btn active" data-mode="creation">创作优先</button>
+      <button class="mode-btn" data-mode="debate">辩论优先</button>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button id="theme-toggle" title="切换主题">🌓</button>
+    <button id="settings-btn" class="settings-top-btn" title="项目设定 (⌘,)">⚙️</button>
+  </div>
+</div>
 
-<!-- 设置弹窗 -->
+<!-- ═══════ App Layout ═══════ -->
+<div class="app-layout">
+
+  <!-- ─── LeftSidebar ─── -->
+  <aside class="left-sidebar" id="left-sidebar">
+    <button class="sidebar-toggle" id="sidebar-toggle">◀</button>
+    <div class="sidebar-collapsed-indicator">📖</div>
+    <div class="sidebar-content">
+      <div class="sidebar-project-top">
+        <select id="project-select" class="project-select">
+          <option value="">— 请选择项目 —</option>
+        </select>
+        <button id="new-project-btn" class="new-project-btn">+ 新建</button>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">项目列表</div>
+        <div class="project-list" id="sidebar-project-list"></div>
+      </div>
+      <div class="sidebar-footer">
+        <button class="sidebar-settings-btn" id="sidebar-settings-btn">⚙️ 项目设定</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 左侧拖动手柄 -->
+  <div class="resize-handle" data-sidebar="left"></div>
+
+  <!-- ─── MainPanel ─── -->
+  <main class="main-panel">
+    <div class="tab-bar">
+      <button class="tab active" data-tab="create">创作</button>
+      <button class="tab" data-tab="history">历史</button>
+    </div>
+
+    <div class="tab-main">
+
+      <!-- ═══ 设定 Tab (settings, 不再通过Tab按钮访问，保留DOM兼容) ═══ -->
+      <section id="tab-settings" class="tab-content">
+        <div id="settings-no-project" class="no-project-msg">
+          <p>未选择项目。请先前往<a href="#" id="goto-create-tab">创作页</a>选择或创建项目。</p>
+        </div>
+        <div id="settings-editor" class="settings-editor hidden">
+          <div class="se-header">
+            <span id="se-project-name" class="se-project-name"></span>
+            <button id="se-save" class="se-save-btn">保存设定</button>
+            <span id="se-msg" class="se-msg"></span>
+          </div>
+          <div class="se-body">
+            <div class="se-panel">
+              <div class="se-panel-title">世界观设定</div>
+              <div class="field">
+                <label>书名</label>
+                <input type="text" id="se-title" placeholder="作品标题">
+              </div>
+              <div class="field">
+                <label>题材</label>
+                <input type="text" id="se-genre" placeholder="如：现代悬疑">
+              </div>
+              <div class="field">
+                <label>世界观</label>
+                <textarea id="se-world-view" rows="3" placeholder="世界背景描述…"></textarea>
+              </div>
+              <div class="field">
+                <label>风格</label>
+                <div class="inline-fields">
+                  <input type="text" id="se-style-tone" placeholder="语气" value="">
+                  <input type="text" id="se-style-pace" placeholder="节奏" value="">
+                  <input type="text" id="se-style-pov" placeholder="视角" value="">
+                </div>
+              </div>
+              <div class="field">
+                <label>禁忌主题（逗号分隔）</label>
+                <input type="text" id="se-forbidden" placeholder="过度暴力, 色情">
+              </div>
+            </div>
+            <div class="se-panel">
+              <div class="se-panel-title">人物档案</div>
+              <div id="se-characters-list"></div>
+              <button type="button" class="btn-add" id="se-add-character">+ 添加角色</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ 创作 Tab (create) ═══ -->
+      <section id="tab-create" class="tab-content active">
+
+        <div class="layout mode-creation">
+          <!-- 主区：成品阅读 + 底部指令栏 -->
+          <section class="col-main">
+            <div class="scene-text-header">
+              <span class="scene-text-title" id="scene-text-title"></span>
+              <button class="scene-text-options-btn" id="scene-text-options-btn" title="更多操作">⋯ 选项</button>
+            </div>
+            <div id="scene-text" class="scene-text">
+              <p class="placeholder">成品将在这里显示。</p>
+            </div>
+            <div id="scene-text-meta" class="scene-text-meta hidden"></div>
+
+            <!-- 折叠指令栏 -->
+            <div class="instruction-bar collapsed" id="instruction-bar">
+              <div class="instruction-bar-handle" id="instruction-bar-handle">
+                <span class="instruction-bar-indicator">📝</span>
+                <span class="instruction-bar-title">本轮指令</span>
+                <span class="instruction-bar-arrow">▲</span>
+                <span class="instruction-bar-summary" id="instruction-bar-summary">点击展开输入场景概述</span>
+                <span class="ib-handle-spacer"></span>
+                <button id="next-round-btn" class="next-round-btn hidden">继续下一轮</button>
+              </div>
+              <div class="instruction-bar-body" id="instruction-bar-body">
+                <div class="ib-body-inner">
+                  <div class="field">
+                    <label>场景概述</label>
+                    <div class="field-hint-bar">
+                      <span class="hint-tag hint-auto">留空=主编自主推进</span>
+                      <span class="hint-tag hint-expand">&lt;30字=主编扩展</span>
+                      <span class="hint-tag hint-strict">≥30字=严格执行</span>
+                    </div>
+                    <textarea id="scene-brief" rows="3" placeholder="留空由主编自动推进剧情 / 简述方向由主编扩展 / 详细描述则严格执行"></textarea>
+                    <div id="prev-summary-preview" class="prev-summary-preview hidden">
+                      <div class="prev-summary-label">上轮摘要</div>
+                      <div class="prev-summary-text"></div>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label>特殊指令（可选）</label>
+                    <textarea id="special-instruction" rows="2" placeholder="如：对话多一点、加快节奏…"></textarea>
+                  </div>
+                  <div class="actions-panel">
+                    <div class="length-control">
+                      <label>目标字数：<strong id="length-display">500</strong></label>
+                      <input type="range" id="target-length" min="500" max="5000" step="500" value="500">
+                    </div>
+                    <button id="run-btn">开始创作</button>
+                  </div>
+                  <input type="hidden" id="prev-summary" value="">
+                  <input type="hidden" id="last-paragraph" value="">
+                  <div id="usage-display" class="usage-display hidden"></div>
+                  <div class="col-header decisions-header" style="margin-top:12px;">重大决策</div>
+                  <div id="decisions" class="decisions" style="max-height:180px;">
+                    <p class="placeholder" style="padding: 8px 0;">—</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 右栏：辩论过程 -->
+          <section class="col-mid">
+            <div class="col-header">
+              <span>委员会辩论</span>
+              <button class="pip-pin-btn" id="pip-pin-btn" title="画中画模式">📌</button>
+            </div>
+            <div id="progress-ring" class="progress-ring hidden">
+              <div class="ring-svg-wrap">
+                <svg viewBox="0 0 100 100" class="ring-svg">
+                  <circle cx="50" cy="50" r="42" class="ring-bg"/>
+                  <circle cx="50" cy="50" r="42" class="ring-fill" id="ring-fill"/>
+                </svg>
+                <div class="ring-center">
+                  <div class="ring-round" id="ring-round"></div>
+                  <div class="ring-pct" id="ring-pct">0%</div>
+                  <div class="ring-steps" id="ring-steps">0/8</div>
+                </div>
+              </div>
+              <div class="ring-footer">
+                <span class="ring-member" id="ring-member">—</span>
+                <span class="ring-total-time" id="ring-total-time"></span>
+              </div>
+            </div>
+            <div id="debate-log" class="debate-log">
+              <p class="placeholder">选择项目后点击「开始创作」，委员会辩论过程将显示在这里。</p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ═══ 历史 Tab (history) ═══ -->
+      <section id="tab-history" class="tab-content">
+        <div id="history-no-project" class="no-project-msg">
+          <p>请先在创作页选择项目，再查看历史轮次。</p>
+        </div>
+        <div id="history-content" class="hidden">
+          <div class="history-toolbar">
+            <span id="history-project-label"></span>
+            <span id="history-round-count" class="history-round-count"></span>
+            <button id="history-refresh" class="history-refresh-btn">刷新</button>
+          </div>
+          <div id="history-list" class="history-list">
+            <p class="placeholder">暂无历史记录。</p>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /.tab-main -->
+  </main><!-- /.main-panel -->
+
+  <!-- 右侧拖动手柄 -->
+  <div class="resize-handle" data-sidebar="right"></div>
+
+  <!-- ─── RightDrawer (默认隐藏) ─── -->
+  <aside class="right-drawer" id="right-drawer">
+    <div class="right-drawer-header">
+      <span>委员会辩论</span>
+      <button class="drawer-close" id="drawer-close">×</button>
+    </div>
+    <div class="right-drawer-content"></div>
+  </aside>
+
+</div><!-- /.app-layout -->
+
+<!-- ═══════ PiP Overlay ═══════ -->
+<div id="pip-overlay" class="pip-overlay hidden">
+  <div class="pip-header">
+    <span class="pip-title">委员会辩论</span>
+    <button class="pip-minimize-btn" id="pip-minimize" title="最小化">─</button>
+    <button class="pip-unpin-btn" id="pip-unpin" title="取消钉住">📌</button>
+  </div>
+  <div class="pip-body">
+    <div id="pip-debate-log" class="debate-log"></div>
+  </div>
+</div>
+<div id="pip-icon" class="pip-icon hidden" title="显示辩论流">💬</div>
+
+<!-- ═══════ StatusBar (28px) ═══════ -->
+<div class="statusbar">
+  <span class="statusbar-left"><span id="status-indicator">🟢</span> <span id="status-text">就绪</span></span>
+  <span class="statusbar-center" id="status-context"></span>
+  <span class="statusbar-right" id="status-shortcuts">⌘K 命令 · ⌘N 新建</span>
+</div>
+
+<!-- ═══════ 重试对话框 ═══════ -->
+<div id="retry-overlay" class="settings-overlay hidden">
+  <div class="settings-modal">
+    <div class="settings-header">
+      <span>委员执行失败</span>
+    </div>
+    <div class="settings-body">
+      <p id="retry-msg" style="font-size:13px;color:#ddd;line-height:1.8;margin-bottom:10px;"></p>
+      <details id="retry-details" style="font-size:11px;color:#888;background:#161616;border:1px solid #333;border-radius:4px;padding:6px 8px;">
+        <summary style="cursor:pointer;color:#888;font-size:11px;">技术详情</summary>
+        <pre id="retry-detail-text" style="margin-top:6px;white-space:pre-wrap;font-size:11px;color:#999;line-height:1.6;"></pre>
+      </details>
+    </div>
+    <div class="settings-footer">
+      <button id="retry-skip-btn" style="background:#3a3030;border:none;border-radius:4px;color:#c08060;font-size:12px;font-weight:600;padding:6px 16px;cursor:pointer;">跳过该委员</button>
+      <button id="retry-retry-btn" style="background:#2d5080;border:none;border-radius:4px;color:#fff;font-size:12px;font-weight:600;padding:6px 16px;cursor:pointer;">重试</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ Toast 容器 ═══════ -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ═══════ 命令面板 ═══════ -->
+<div id="cmd-palette" class="cmd-palette-overlay hidden">
+  <div class="cmd-palette-panel">
+    <div class="cmd-search-wrap">
+      <span class="cmd-search-icon">🔍</span>
+      <input type="text" id="cmd-search" class="cmd-search-input" placeholder="搜索或输入命令…" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="cmd-results" id="cmd-results"></div>
+  </div>
+</div>
+
+<!-- ═══════ 致命错误遮罩 ═══════ -->
+<div id="fatal-error-overlay" class="fatal-error-overlay hidden">
+  <div class="fatal-error-panel">
+    <div class="fatal-error-icon">🔴</div>
+    <div class="fatal-error-msg" id="fatal-error-msg">无法连接后端服务器</div>
+    <button id="fatal-error-retry" class="fatal-error-retry-btn">🔄 重新连接</button>
+  </div>
+</div>
+
+<!-- ═══════ 设定弹窗 (Settings Modal) ═══════ -->
+<div id="st-modal" class="st-modal-overlay hidden">
+  <div class="st-modal-panel">
+    <div class="st-modal-header">
+      <span>项目设定 — <span id="st-project-name"></span></span>
+      <button class="st-modal-close" id="st-modal-close" title="关闭 (Esc)">✕</button>
+    </div>
+    <div class="st-modal-tabs">
+      <button class="st-tab active" data-stab="world">世界观</button>
+      <button class="st-tab" data-stab="characters">角色卡</button>
+      <button class="st-tab" data-stab="outline">大纲</button>
+      <button class="st-tab" data-stab="committee">委员配置</button>
+      <button class="st-tab" data-stab="presets">预设</button>
+    </div>
+    <div class="st-modal-body">
+      <!-- 世界观 -->
+      <div class="st-tab-content active" id="stc-world">
+        <div class="st-field">
+          <label>标题</label>
+          <input type="text" id="st-title" placeholder="作品标题">
+        </div>
+        <div class="st-field">
+          <label>题材</label>
+          <input type="text" id="st-genre" placeholder="如：现代悬疑">
+        </div>
+        <div class="st-field">
+          <label>世界观</label>
+          <textarea id="st-world-view" rows="4" placeholder="世界背景描述…"></textarea>
+        </div>
+        <div class="st-field-row">
+          <div class="st-field">
+            <label>基调</label>
+            <input type="text" id="st-style-tone" placeholder="冷峻克制">
+          </div>
+          <div class="st-field">
+            <label>节奏</label>
+            <input type="text" id="st-style-pace" placeholder="中速">
+          </div>
+          <div class="st-field">
+            <label>视角</label>
+            <input type="text" id="st-style-pov" placeholder="第三人称">
+          </div>
+        </div>
+        <div class="st-field">
+          <label>禁忌（逗号分隔）</label>
+          <input type="text" id="st-forbidden" placeholder="过度暴力, 色情">
+        </div>
+      </div>
+      <!-- 角色卡 -->
+      <div class="st-tab-content" id="stc-characters">
+        <div class="st-char-toolbar">
+          <button id="st-add-char" class="st-btn">+ 添加角色</button>
+        </div>
+        <div class="st-char-grid" id="st-char-grid"></div>
+      </div>
+      <!-- 大纲 -->
+      <div class="st-tab-content" id="stc-outline">
+        <textarea id="st-outline" class="st-outline-editor" placeholder="在这里编写大纲...\n\n可用 Markdown 格式"></textarea>
+      </div>
+      <!-- 委员配置 -->
+      <div class="st-tab-content" id="stc-committee">
+        <div id="st-committee-forms"></div>
+      </div>
+      <!-- 预设 -->
+      <div class="st-tab-content" id="stc-presets">
+        <div class="st-placeholder">
+          <p>未来支持导入导出角色卡和预设包（破甲风格等）</p>
+        </div>
+      </div>
+    </div>
+    <div class="st-modal-footer">
+      <button id="st-save" class="st-btn">💾 保存</button>
+      <button id="st-save-apply" class="st-btn st-btn-primary">⏎ 保存并应用到下一轮</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ 局部修改工具栏 ═══════ -->
+<div id="rewrite-toolbar" class="rewrite-toolbar hidden">
+  <div class="rewrite-toolbar-row">
+    <input type="text" id="rewrite-intent" class="rewrite-intent-input"
+           placeholder="修改意图（如：让这段更紧张）" autocomplete="off">
+    <button id="rewrite-confirm" class="rewrite-confirm-btn">确认修改</button>
+    <button id="rewrite-cancel" class="rewrite-cancel-btn">×</button>
+  </div>
+  <div id="rewrite-error" class="rewrite-error hidden"></div>
+</div>
+
+<!-- ═══════ 设置弹窗（API Key / 新建项目） ═══════ -->
 <div id="settings-overlay" class="settings-overlay hidden">
   <div class="settings-modal">
     <div class="settings-header">
@@ -21,8 +397,6 @@
       <button id="settings-close">×</button>
     </div>
     <div class="settings-body">
-
-      <!-- Claude -->
       <div class="provider-block" id="provider-claude">
         <div class="provider-title">
           <span class="provider-name">Claude (Anthropic)</span>
@@ -46,8 +420,6 @@
           <label class="field-hint">官方地址：https://api.anthropic.com</label>
         </div>
       </div>
-
-      <!-- DeepSeek -->
       <div class="provider-block" id="provider-deepseek">
         <div class="provider-title">
           <span class="provider-name">DeepSeek</span>
@@ -71,8 +443,6 @@
           <label class="field-hint">官方地址：https://api.deepseek.com</label>
         </div>
       </div>
-
-      <!-- Gemini -->
       <div class="provider-block" id="provider-gemini">
         <div class="provider-title">
           <span class="provider-name">Gemini（备用，暂无委员岗位）</span>
@@ -96,7 +466,6 @@
           <label class="field-hint">官方地址：https://generativelanguage.googleapis.com/v1beta/openai</label>
         </div>
       </div>
-
     </div>
     <div class="settings-footer">
       <span id="settings-msg" class="settings-msg"></span>
@@ -105,113 +474,70 @@
   </div>
 </div>
 
-<main class="layout">
-
-  <!-- 左栏：表单 -->
-  <aside class="col-left">
-
-    <div class="panel">
-      <div class="panel-title">作品设定</div>
-
+<!-- ═══════ 新建项目弹窗 ═══════ -->
+<div id="new-project-overlay" class="settings-overlay hidden">
+  <div class="settings-modal" style="width:500px">
+    <div class="settings-header">
+      <span>新建作品</span>
+      <button id="new-project-close">×</button>
+    </div>
+    <div class="settings-body">
       <div class="field">
-        <label>标题</label>
-        <input type="text" id="title" value="暗流">
+        <label>书名 <span style="color:var(--color-danger)">*</span></label>
+        <input type="text" id="np-title" placeholder="如：暗流">
       </div>
       <div class="field">
-        <label>题材</label>
-        <input type="text" id="genre" value="现代悬疑">
+        <label>题材 <span style="color:var(--color-danger)">*</span></label>
+        <input type="text" id="np-genre" placeholder="如：现代悬疑">
       </div>
       <div class="field">
-        <label>世界观</label>
-        <textarea id="world-view" rows="2">当代中国某沿海城市，权贵与底层之间暗流涌动。</textarea>
+        <label>世界观简介（选填）</label>
+        <textarea id="np-world-view" rows="3" placeholder="一段话描述世界背景…"></textarea>
       </div>
       <div class="field">
-        <label>风格</label>
-        <div class="inline-fields">
-          <input type="text" id="style-tone" placeholder="语气" value="冷峻克制">
-          <input type="text" id="style-pace" placeholder="节奏" value="中速，节奏感强">
-          <input type="text" id="style-pov" placeholder="视角" value="第三人称限知视角">
-        </div>
-      </div>
-      <div class="field">
-        <label>禁忌主题（逗号分隔）</label>
-        <input type="text" id="forbidden-themes" value="过度暴力, 色情">
-      </div>
-      <div class="field">
-        <label>角色</label>
-        <div id="characters-list"></div>
-        <button type="button" class="btn-add" id="add-character">+ 添加角色</button>
+        <label>初始角色（选填，可后续补充）</label>
+        <div id="np-characters-list"></div>
+        <button type="button" class="btn-add" id="np-add-character">+ 添加角色</button>
       </div>
     </div>
+    <div class="settings-footer">
+      <span id="np-msg" class="settings-msg"></span>
+      <button id="np-save">创建作品</button>
+    </div>
+  </div>
+</div>
 
-    <div class="panel">
-      <div class="panel-title">本轮指令</div>
+<!-- ═══════ 右键上下文菜单 ═══════ -->
+<div id="context-menu" class="context-menu hidden">
+  <button class="context-menu-item" data-action="rename">✏️ 重命名</button>
+  <button class="context-menu-item" data-action="copy">📋 复制</button>
+  <div class="context-menu-separator"></div>
+  <button class="context-menu-item danger" data-action="delete">🗑 删除</button>
+  <button class="context-menu-item" data-action="trash">📦 移入回收站</button>
+</div>
 
-      <div class="field">
-        <label>场景概述</label>
-        <textarea id="scene-brief" rows="2">陈默在废弃仓库中发现一个线索，林晓薇意外出现，两人第一次正面交锋。</textarea>
-      </div>
-      <div class="field">
-        <label>场景背景</label>
-        <textarea id="scene-setting" rows="2">深夜，港口废弃仓库，潮湿阴冷，远处有船鸣声。</textarea>
-      </div>
-      <div class="field">
-        <label>目标</label>
-        <textarea id="goal" rows="2">建立两人之间的张力，埋下合作的可能性，但不要急于和解。</textarea>
-      </div>
-      <div class="field">
-        <label>涉及角色（逗号分隔）</label>
-        <input type="text" id="involved-characters" value="陈默, 林晓薇">
-      </div>
-      <div class="field">
-        <label>必须包含（逗号分隔）</label>
-        <input type="text" id="must-include" value="一句能概括陈默性格的台词, 仓库内的具体细节">
-      </div>
-      <div class="field">
-        <label>必须避免（逗号分隔）</label>
-        <input type="text" id="must-avoid" value="俗套的打斗, 一见如故式的快速信任">
-      </div>
-      <div class="field">
-        <label>本轮节奏</label>
-        <input type="text" id="pace" value="紧绷，克制">
-      </div>
-      <div class="field">
-        <label>情感弧线</label>
-        <input type="text" id="emotional-arc" value="对立 → 试探 → 暂时僵持">
+<!-- ═══════ 确认对话框 ═══════ -->
+<div id="confirm-overlay" class="settings-overlay hidden">
+  <div class="settings-modal confirm-modal">
+    <div class="settings-header">
+      <span id="confirm-title">确认</span>
+    </div>
+    <div class="settings-body">
+      <p id="confirm-msg" class="confirm-msg"></p>
+      <div id="confirm-rename-wrap" class="hidden confirm-rename-wrap">
+        <label class="confirm-rename-label">新名称</label>
+        <input type="text" id="confirm-rename-field" class="confirm-rename-field">
       </div>
     </div>
-
-    <div class="panel actions-panel">
-      <div class="length-control">
-        <label>目标字数：<strong id="length-display">500</strong></label>
-        <input type="range" id="target-length" min="500" max="5000" step="500" value="500">
+    <div class="settings-footer confirm-footer">
+      <span id="confirm-extra" class="confirm-extra"></span>
+      <div class="confirm-btns">
+        <button id="confirm-cancel" class="confirm-btn-cancel">取消</button>
+        <button id="confirm-ok" class="confirm-btn-ok">确认</button>
       </div>
-      <button id="run-btn">开始创作</button>
     </div>
-
-  </aside>
-
-  <!-- 中栏：辩论过程 -->
-  <section class="col-mid">
-    <div class="col-header">委员会辩论</div>
-    <div id="debate-log" class="debate-log">
-      <p class="placeholder">点击「开始创作」后，委员会辩论过程将显示在这里。</p>
-    </div>
-  </section>
-
-  <!-- 右栏：成品 + 重大决策 -->
-  <section class="col-right">
-    <div class="col-header">最终成品</div>
-    <div id="scene-text" class="scene-text">
-      <p class="placeholder">成品将在这里显示。</p>
-    </div>
-    <div class="col-header decisions-header">重大决策</div>
-    <div id="decisions" class="decisions">
-      <p class="placeholder" style="padding: 8px 0;">—</p>
-    </div>
-  </section>
-
-</main>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>
